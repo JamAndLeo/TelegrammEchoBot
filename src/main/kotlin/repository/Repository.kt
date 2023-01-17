@@ -1,11 +1,12 @@
 package repository
 
-import models.ServerReply.ServerReply
-import models.ServerUpdates.UpdatesFromTG
+import models.messageToUser.MessageToUser
+import models.serverReply.ServerReply
+import models.serverUpdates.UpdatesFromTG
 import retrofit.ApiService
 import javax.inject.Inject
 
-class Recipient
+class Repository
 @Inject constructor(private val service: ApiService) {
 
     fun getUpdates(): UpdatesFromTG? {
@@ -22,4 +23,9 @@ class Recipient
             .body()
     }
 
+    fun postMessage(message: MessageToUser) {
+        service
+            .postMessage(message)
+            .execute()
+    }
 }

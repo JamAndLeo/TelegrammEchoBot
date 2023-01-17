@@ -1,77 +1,68 @@
 package server
 
-import models.MessageToUser.MessageToUser
-import models.ServerUpdates.Result
-import repository.Recipient
-import repository.Sender
+import models.messageToUser.MessageToUser
+import models.serverUpdates.Result
+import repository.Repository
+import repository.UserStorageManager
 import java.io.File
 import javax.inject.Inject
 
 class Server
 @Inject constructor(
-    private val sender: Sender,
-    private val recipient: Recipient,
+    private val repository: Repository,
+    private val userManager: UserStorageManager,
 ) {
 
+    private val threshold: Long = 2000
     private val answeredMessages = File("storageAnsweredMessage_ID.txt")
-    private val usersID = File("storageUsers_ID.txt")
+    private val answeredMessagesInCash = getAnsweredMessages()
 
     fun postingEchoMessagesForAll() {
-        Thread.sleep(2000)
+        Thread.sleep(threshold)
         val newMessages = getNewMessages()
-        val ourUsers = getOurUsers()
-        for (maseege in newMessages) {
-            putNewUser(maseege.message.from.id)
-            ourUsers.forEach {
+        for (message in newMessages) {
+            userManager.putNewUser(message.message.from.id)
+            userManager.userIdCash.forEach {
                 val echoMessage = MessageToUser(
                     it,
-                    "Пользователь ${maseege.message.from.first_name} написал следующее сообщение:\n[${maseege.message.text}]"
+                    "Пользователь ${message.message.from.firstName} написал следующее сообщение:\n[${message.message.text}]"
                 )
-                sender.postMessage(echoMessage)
+                repository.postMessage(echoMessage)
             }
-            answeredMessages.appendText("\n${maseege.update_id}")
+            answeredMessages.appendText("\n${message.updateId}")
+            answeredMessagesInCash.add(message.updateId)
         }
     }
 
     fun postingEchoMessages() {
-        Thread.sleep(2000)
+        Thread.sleep(threshold)
         val newMessages = getNewMessages()
-        for (maseege in newMessages) {
-            val echoMessage = MessageToUser(maseege.message.from.id, maseege.message.text)
-            sender.postMessage(echoMessage)
-            answeredMessages.appendText("\n${maseege.update_id}")
-            putNewUser(maseege.message.from.id)
+        for (message in newMessages) {
+            val echoMessage = MessageToUser(message.message.from.id, message.message.text)
+            repository.postMessage(echoMessage)
+            answeredMessages.appendText("\n${message.updateId}")
+            answeredMessagesInCash.add(message.updateId)
+            userManager.putNewUser(message.message.from.id)
         }
     }
 
+    fun getServerReply(){
+        repository.getServerReply()
+    }
 
-    fun getNewMessages(): MutableList<Result> {
-        val updates = recipient.getUpdates()
-        answeredMessages.createNewFile()
-
-        val answeredMessagesInCash = mutableListOf<Int>()
-        answeredMessages.readLines().forEach { answeredMessagesInCash.add(it.toInt()) }
-
+    private fun getNewMessages(): MutableList<Result> {
+        val updates = repository.getUpdates()
         val newMessages = mutableListOf<Result>()
-
-        updates?.result?.map {
-            if (!answeredMessagesInCash.contains(it.update_id)) newMessages.add(it)
+        updates?.results?.map {
+            if (!answeredMessagesInCash.contains(it.updateId)) newMessages.add(it)
         }
-
         return newMessages
     }
 
-    fun getOurUsers(): MutableList<Int> {
-        usersID.createNewFile()
-        val ourUsers = mutableListOf<Int>()
-        usersID.readLines().forEach() { ourUsers.add(it.toInt()) }
-        return ourUsers
+    private fun getAnsweredMessages(): MutableList<Int> {
+        answeredMessages.createNewFile()
+        val answeredMessagesInCash = mutableListOf<Int>()
+        answeredMessages.readLines().forEach { answeredMessagesInCash.add(it.toInt()) }
+        return answeredMessagesInCash
     }
-
-    fun putNewUser(userId: Int) {
-        val ourUsers = getOurUsers()
-        if (!ourUsers.contains(userId)) usersID.appendText("\n$userId")
-    }
-
 }
-

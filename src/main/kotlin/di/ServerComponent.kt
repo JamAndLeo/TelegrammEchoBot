@@ -1,8 +1,7 @@
-package DI
+package di
 
 import dagger.Component
 import server.Server
-
 
 @Component(
     modules = [
@@ -13,4 +12,3 @@ import server.Server
 interface ServerComponent {
     fun getServer(): Server
 }
-
